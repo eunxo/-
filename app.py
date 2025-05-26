@@ -11,6 +11,7 @@ CURRENCY_MAP = {
     "CN": "CNY",
     "GB": "GBP",
     "EU": "EUR",
+    "FR": "EUR",  # 프랑스는 EUR 사용
     "TH": "THB",
     "VN": "VND"
 }
@@ -38,39 +39,31 @@ def get_user_country(ip):
 def get_currency_code(country_code):
     return CURRENCY_MAP.get(country_code, "USD")
 
-# 입력 금액을 원(KRW)으로 변환 (환율을 USD 기준으로 변환 후 KRW로 변환)
+# 입력 금액을 원(KRW)으로 변환 (프랑스에서는 EUR → KRW 변환 적용)
 def convert_to_krw(amount, from_currency):
     try:
         # 만약 이미 KRW이면 변환 없이 그대로 반환
         if from_currency == "KRW":
             return int(amount)  # 정수로 변환하여 그대로 반환
 
-        # USD 기준 환율 가져오기
-        res = requests.get("https://api.frankfurter.app/latest?from=USD")
+        # 프랑스인 경우 EUR → KRW 변환 수행, 다른 경우 USD → KRW 변환
+        base_currency = "EUR" if from_currency == "EUR" else "USD"
+
+        # 기준 환율 가져오기 (exchangerate.host 사용)
+        res = requests.get(f"https://api.exchangerate.host/latest?base={base_currency}")
         data = res.json()
 
         print("[API 응답 확인]", data)  # 디버깅용 출력
 
         if "rates" not in data or "KRW" not in data["rates"]:
-            print("[CONVERT ERROR] API 응답 없음")
-            return 0
-        
-        usd_to_krw = data["rates"]["KRW"]
-        
-        # 다른 통화인 경우 먼저 USD로 변환 후 KRW로 변환
-        res_currency = requests.get(f"https://api.frankfurter.app/latest?from={from_currency}")
-        currency_data = res_currency.json()
-        
-        if "rates" not in currency_data or "USD" not in currency_data["rates"]:
-            print("[CONVERT ERROR] 해당 통화 변환 없음")
-            return 0
+            print("[CONVERT ERROR] API 응답 없음, 기본 환율 적용")
+            return round(amount * (1470 if from_currency == "EUR" else 1300))  # 기본 환율 적용
 
-        from_currency_to_usd = currency_data["rates"]["USD"]
-        converted_to_usd = amount * from_currency_to_usd
-        return round(converted_to_usd * usd_to_krw)  # 정수 반올림
+        currency_to_krw = data["rates"]["KRW"]
+        return round(amount * currency_to_krw)  # 정수 반올림
     except Exception as e:
         print("[CONVERT ERROR]", e)
-        return 0
+        return round(amount * (1470 if from_currency == "EUR" else 1300))  # 예외 발생 시 기본 환율 적용
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -86,17 +79,17 @@ def index():
         try:
             input_price = request.form.get("price", "0").strip()
 
-            # 숫자 검증 (소수 포함)
-            if not input_price.replace(".", "", 1).isdigit():
-                error_message = "유효한 숫자를 입력하세요."
-            else:
-                input_price = float(input_price)
-                if input_price <= 0:
+            # 숫자 검증: 소수점 포함 허용 + 음수 검사
+            try:
+                input_price = float(input_price)  # 숫자로 변환 시도
+                if input_price <= 0:  # 음수 또는 0 입력 시 오류 메시지 출력
                     error_message = "금액은 0보다 커야 합니다."
                 else:
                     converted_price = convert_to_krw(input_price, currency_code)
-        except ValueError:
-            error_message = "올바른 금액을 입력하세요."
+            except ValueError:
+                error_message = "유효한 숫자를 입력하세요."  # 변환 실패 시 오류 메시지
+        except Exception as e:
+            error_message = "올바른 입력값을 제공하세요."
 
     return render_template("index.html",
                            country=country_name,
