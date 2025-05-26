@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>환율 계산기</title>
+</head>
+<body>
+    <h3>🌍 현재 접속한 국가는 {{ country }}이며, 통화는 <b>{{ currency }}</b>입니다.</h3>
+
+    <form method="post">
+        <label>현지 통화로 물건 가격 입력:</label>
+        <input type="number" step="0.01" name="price" required>
+        <button type="submit">원화(KRW)로 계산</button>
+    </form>
+
+    {% if error_message %}
+        <p style="color:red;">{{ error_message }}</p>
+    {% endif %}
+
+    {% if converted_price is not none %}
+        <h3>💱 {{ input_price }} {{ currency }} → {{ converted_price | round(2) }} 원</h3>
+    {% endif %}
+</body>
+</html>
