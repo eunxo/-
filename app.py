@@ -8,12 +8,13 @@ CURRENCY_MAP = {
     "US": "USD",
     "KR": "KRW",
     "JP": "JPY",
-    "CN": "CNY",
     "GB": "GBP",
     "EU": "EUR",
     "FR": "EUR",
     "TH": "THB",
-    "VN": "VND"
+    "VN": "VND",
+    "AU": "AUD",  # 호주
+    "SG": "SGD"   # 싱가포르
 }
 
 # 사용자 IP를 기반으로 국가 코드 가져오기
@@ -60,11 +61,12 @@ def convert_to_krw(amount, from_currency):
         fallback_rates = {
             "USD": 1300,
             "EUR": 1470,
-            "CNY": 180,
             "JPY": 9.0,
             "GBP": 1650,
             "THB": 37,
-            "VND": 0.053
+            "VND": 0.053,
+            "AUD": 880,
+            "SGD": 980
         }
 
         rate = fallback_rates.get(from_currency)
